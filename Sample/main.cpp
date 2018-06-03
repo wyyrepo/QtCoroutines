@@ -1,99 +1,75 @@
 #include <QCoreApplication>
-#include <iostream>
-#include <chrono>
-#include <functional>
+#include <QDebug>
 
 #include "qtcoroutine.h"
 #include "qtawaitables.h"
 
-/*
-coroutine::Channel<int> channel;
+using namespace QtCoroutine;
+using namespace std::chrono_literals;
 
-string async_func()
-{
-	std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-	return "22";
+namespace {
+
+QObject *testObj;
+
 }
 
-void routine_func1()
+void coroutine_1()
 {
-	int i = channel.pop();
-	std::cout << i << std::endl;
-
-	i = channel.pop();
-	std::cout << i << std::endl;
+	qDebug() << "begin" << Q_FUNC_INFO;
+	yield();
+	qDebug() << "end" << Q_FUNC_INFO;
 }
 
-void routine_func2(int i)
+void coroutine_2()
 {
-	std::cout << "20" << std::endl;
-	coroutine::yield();
+	qDebug() << "begin" << Q_FUNC_INFO;
 
-	std::cout << "21" << std::endl;
+	auto tpl = awaitargs<QString>::tawait(testObj, &QObject::objectNameChanged);
+	static_assert(std::is_same<decltype(tpl), std::tuple<QString>>::value, "tpl wrong");
+	qDebug() << "name changed to tuple:" << std::get<0>(tpl);
 
-	//run function async
-	//yield current routine if result not returned
-	string str = coroutine::await(async_func);
-	std::cout << str << std::endl;
+	auto str = awaitargs<QString>::await(testObj, &QObject::objectNameChanged);
+	static_assert(std::is_same<decltype(str), QString>::value, "str wrong");
+	qDebug() << "name changed to string:" << str;
+
+	auto obj = await(testObj, &QObject::destroyed);
+	static_assert(std::is_same<decltype(obj), std::tuple<QObject*>>::value, "obj wrong");
+	qDebug() << "object was destroyed:" << std::get<0>(obj);
+
+	awaitargs<>::await(qApp, &QCoreApplication::aboutToQuit);
+	qDebug() << "end" << Q_FUNC_INFO;
 }
 
-void thread_func()
+void coroutine_3()
 {
-	//create routine with callback like std::function<void()>
-	coroutine::routine_t rt1 = coroutine::create(routine_func1);
-	coroutine::routine_t rt2 = coroutine::create(std::bind(routine_func2, 2));
-
-	std::cout << "00" << std::endl;
-	coroutine::resume(rt1);
-
-	std::cout << "01" << std::endl;
-	coroutine::resume(rt2);
-
-	std::cout << "02" << std::endl;
-	channel.push(10);
-
-	std::cout << "03" << std::endl;
-	coroutine::resume(rt2);
-
-	std::cout << "04" << std::endl;
-	channel.push(11);
-
-	std::cout << "05" << std::endl;
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(6000));
-	coroutine::resume(rt2);
-
-	//destroy routine, free resouce allocated
-	//Warning: don't destroy routine by itself
-	coroutine::destroy(rt1);
-	coroutine::destroy(rt2);
+	qDebug() << "begin" << Q_FUNC_INFO;
+	await(3s);
+	QMetaObject::invokeMethod(qApp, "quit", Qt::QueuedConnection);
+	qDebug() << "end" << Q_FUNC_INFO;
 }
-*/
 
 int main(int argc, char *argv[])
 {
-	using namespace QtCoroutine;
-	using namespace std::chrono_literals;
-
 	QCoreApplication a(argc, argv);
 
-	// compile test
-	await(10s);
-	awaitargs<>::await(qApp, &QCoreApplication::aboutToQuit);
-	auto tpl = awaitargs<QString>::tawait(qApp, &QCoreApplication::objectNameChanged);
-	auto str = awaitargs<QString>::await(qApp, &QCoreApplication::objectNameChanged);
-	auto obj = std::get<0>(await(qApp, &QCoreApplication::destroyed));
-	static_assert(std::is_same<decltype(tpl), std::tuple<QString>>::value, "tpl wrong");
-	static_assert(std::is_same<decltype(str), QString>::value, "str wrong");
-	static_assert(std::is_same<decltype(obj), QObject*>::value, "obj wrong");
+	// test simple yield
+	auto id = createAndRun(coroutine_1).first;
+	qDebug() << "back in main";
+	resume(id);
+	qDebug() << "back in main";
+	destroy(id); //TODO implement auto-destroy?
 
-	// compile test
+	// test await signals
+	testObj = new QObject(qApp);
+	createAndRun(coroutine_2);
+	qDebug() << "changing name to test1";
+	testObj->setObjectName("test1");
+	qDebug() << "changing name to test2";
+	testObj->setObjectName("test2");
+	qDebug() << "destroying object";
+	delete testObj;
 
-//	std::thread t1(thread_func);
-//	std::thread t2([](){
-//		//unsupport coordinating routine crossing threads
-//	});
-//	t1.join();
-//	t2.join();
-	return 0;
+	// test await timeout
+	createAndRun(coroutine_3);
+	return a.exec();
 }

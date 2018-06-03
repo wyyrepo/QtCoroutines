@@ -23,6 +23,9 @@ struct RoutineId
 	operator bool() const;
 	bool operator!() const;
 
+	bool operator==(const RoutineId &other) const;
+	bool operator!=(const RoutineId &other) const;
+
 	bool isValid() const;
 };
 
@@ -37,6 +40,7 @@ extern QAtomicInt StackSize;
 RoutineId create(std::function<void()> fn);
 void destroy(RoutineId id);
 ResumeResult resume(RoutineId id);
+std::pair<RoutineId, ResumeResult> createAndRun(std::function<void()> fn);
 
 RoutineId current();
 void yield();

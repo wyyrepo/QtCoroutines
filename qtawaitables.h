@@ -46,7 +46,7 @@ struct signal {
 		});
 	}
 	type result() {
-		return std::move(_result);
+		return _result;
 	}
 
 private:
@@ -54,12 +54,6 @@ private:
 	const Func _signal;
 	QMetaObject::Connection _connection;
 	type _result;
-
-	std::function<void(Args...)> bind(RoutineId id) {
-		return [this, id](Args... args) {
-			return signalTriggered(id, args...);
-		};
-	}
 
 	void signalTriggered(RoutineId id, Args... args) {
 		_result = std::make_tuple(args...);
