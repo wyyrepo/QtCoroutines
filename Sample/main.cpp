@@ -61,13 +61,14 @@ int main(int argc, char *argv[])
 
 	// test await signals
 	testObj = new QObject(qApp);
-	createAndRun(coroutine_2);
+	id = createAndRun(coroutine_2).first;
 	qDebug() << "changing name to test1";
 	testObj->setObjectName("test1");
 	qDebug() << "changing name to test2";
 	testObj->setObjectName("test2");
 	qDebug() << "destroying object";
 	delete testObj;
+	destroy(id); //TODO implement auto-destroy?
 
 	// test await timeout
 	createAndRun(coroutine_3);

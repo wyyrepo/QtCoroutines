@@ -37,11 +37,11 @@ struct signal {
 		_signal{std::move(signal)}
 	{}
 
-	using type = std::tuple<Args...>;
+	using type = std::tuple<std::decay_t<Args>...>;
 	void prepare() {
 		const auto routine = current();
-		const auto connection = QObject::connect(_sender, _signal,
-												 [this, routine](Args... args) {
+		_connection = QObject::connect(_sender, _signal,
+									   [this, routine](std::decay_t<Args>... args) {
 			return signalTriggered(routine, args...);
 		});
 	}
@@ -55,7 +55,7 @@ private:
 	QMetaObject::Connection _connection;
 	type _result;
 
-	void signalTriggered(RoutineId id, Args... args) {
+	void signalTriggered(RoutineId id, std::decay_t<Args>... args) {
 		_result = std::make_tuple(args...);
 		QObject::disconnect(_connection);
 		_connection = {};
