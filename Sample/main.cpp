@@ -80,8 +80,12 @@ int main(int argc, char *argv[])
 	// compile test
 	await(10s);
 	awaitargs<>::await(qApp, &QCoreApplication::aboutToQuit);
-	awaitargs<QString>::await(qApp, &QCoreApplication::objectNameChanged);
-	QObject* obj = std::get<0>(await(qApp, &QCoreApplication::destroyed));
+	auto tpl = awaitargs<QString>::tawait(qApp, &QCoreApplication::objectNameChanged);
+	auto str = awaitargs<QString>::await(qApp, &QCoreApplication::objectNameChanged);
+	auto obj = std::get<0>(await(qApp, &QCoreApplication::destroyed));
+	static_assert(std::is_same<decltype(tpl), std::tuple<QString>>::value, "tpl wrong");
+	static_assert(std::is_same<decltype(str), QString>::value, "str wrong");
+	static_assert(std::is_same<decltype(obj), QObject*>::value, "obj wrong");
 
 	// compile test
 

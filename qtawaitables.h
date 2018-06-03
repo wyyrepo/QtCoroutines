@@ -92,8 +92,26 @@ struct sigfn<TFunc, QtPrivate::FunctionPointer<TFunc>> : sigargs<TFunc, typename
 template<typename... Args>
 struct awaitargs {
 	template <typename Func>
+	static std::tuple<Args...> tawait(const typename QtPrivate::FunctionPointer<Func>::Object *sender, Func signal) {
+		return QtCoroutine::await(QtCoroutine::signal<Func, Args...>{std::move(sender), std::move(signal)});
+	}
+
+	template <typename Func>
 	static std::tuple<Args...> await(const typename QtPrivate::FunctionPointer<Func>::Object *sender, Func signal) {
 		return QtCoroutine::await(QtCoroutine::signal<Func, Args...>{std::move(sender), std::move(signal)});
+	}
+};
+
+template<typename Arg>
+struct awaitargs<Arg> {
+	template <typename Func>
+	static std::tuple<Arg> tawait(const typename QtPrivate::FunctionPointer<Func>::Object *sender, Func signal) {
+		return QtCoroutine::await(QtCoroutine::signal<Func, Arg>{std::move(sender), std::move(signal)});
+	}
+
+	template <typename Func>
+	static Arg await(const typename QtPrivate::FunctionPointer<Func>::Object *sender, Func signal) {
+		return std::get<0>(QtCoroutine::await(QtCoroutine::signal<Func, Arg>{std::move(sender), std::move(signal)}));
 	}
 };
 
