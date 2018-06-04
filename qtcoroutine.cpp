@@ -1,24 +1,28 @@
 #include "qtcoroutine.h"
+#include "qtcoroutine_p.h"
 
-#define STACK_LIMIT QtCoroutine::StackSize
-#include "coroutine/coroutine.h"
-
-QAtomicInt QtCoroutine::StackSize{1024*1024};
+QAtomicInteger<size_t> QtCoroutine::StackSize{1024*1024};
 
 QtCoroutine::RoutineId QtCoroutine::create(std::function<void ()> fn)
 {
-	return coroutine::create(std::move(fn));
+	quint64 id;
+	do {
+		id = ++Ordinator::index;
+	} while(id == 0 && Ordinator::ordinator.routines.contains(id));
+	Ordinator::ordinator.routines.insert(id, std::move(fn));
+	return id;
 }
 
-void QtCoroutine::destroy(QtCoroutine::RoutineId id)
+void QtCoroutine::cancel(QtCoroutine::RoutineId id)
 {
 	Q_ASSERT(id != current());
-	coroutine::destroy(id);
-}
-
-QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
-{
-	return static_cast<ResumeResult>(coroutine::resume(id));
+	Ordinator::ordinator.routines.remove(id);
+	for(auto it = Ordinator::ordinator.executionStack.begin(), end = Ordinator::ordinator.executionStack.end(); it != end; it++) {
+		if(it->first == id) {
+			Ordinator::ordinator.executionStack.erase(it);
+			break;
+		}
+	}
 }
 
 std::pair<QtCoroutine::RoutineId, QtCoroutine::ResumeResult> QtCoroutine::createAndRun(std::function<void ()> fn)
@@ -29,48 +33,22 @@ std::pair<QtCoroutine::RoutineId, QtCoroutine::ResumeResult> QtCoroutine::create
 
 QtCoroutine::RoutineId QtCoroutine::current()
 {
-	return coroutine::current();
-}
-
-void QtCoroutine::yield()
-{
-	coroutine::yield();
+	return Ordinator::ordinator.executionStack.isEmpty() ?
+				InvalidRoutineId :
+				Ordinator::ordinator.executionStack.top().first;
 }
 
 
 
-QtCoroutine::RoutineId::RoutineId() = default;
+thread_local QtCoroutine::Ordinator QtCoroutine::Ordinator::ordinator;
+QAtomicInteger<quint64> QtCoroutine::Ordinator::index = 0;
 
-QtCoroutine::RoutineId::RoutineId(quint32 id) :
-	id{id}
+QtCoroutine::Routine::Routine(std::function<void()> &&func) :
+	func{std::move(func)}
 {}
 
-QtCoroutine::RoutineId::operator quint32() const
+void QtCoroutine::abort()
 {
-	return id;
-}
-
-QtCoroutine::RoutineId::operator bool() const
-{
-	return id == 0;
-}
-
-bool QtCoroutine::RoutineId::operator!() const
-{
-	return id != 0;
-}
-
-bool QtCoroutine::RoutineId::operator==(const QtCoroutine::RoutineId &other) const
-{
-	return id == other.id;
-}
-
-bool QtCoroutine::RoutineId::operator!=(const QtCoroutine::RoutineId &other) const
-{
-	return id != other.id;
-}
-
-bool QtCoroutine::RoutineId::isValid() const
-{
-	return id == 0;
+	Ordinator::ordinator.routines.remove(current());
+	yield();
 }

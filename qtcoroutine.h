@@ -12,38 +12,25 @@ namespace QtCoroutine
 
 // standard coroutine methods, as wrappers around the header lib
 
-struct RoutineId
-{
-	quint32 id = 0;
-
-	RoutineId();
-	RoutineId(quint32 id);
-
-	operator quint32() const;
-	operator bool() const;
-	bool operator!() const;
-
-	bool operator==(const RoutineId &other) const;
-	bool operator!=(const RoutineId &other) const;
-
-	bool isValid() const;
-};
+using RoutineId = quint64;
+static const RoutineId InvalidRoutineId = 0;
 
 enum ResumeResult {
-	Finished = -2,
-	InvalidId = -1,
-	Paused = 0
+	Finished,
+	Paused,
+	Error
 };
 
-extern QAtomicInt StackSize;
+extern QAtomicInteger<size_t> StackSize;
 
 RoutineId create(std::function<void()> fn);
-void destroy(RoutineId id);
+void cancel(RoutineId id);
 ResumeResult resume(RoutineId id);
 std::pair<RoutineId, ResumeResult> createAndRun(std::function<void()> fn);
 
 RoutineId current();
 void yield();
+void abort();
 
 template <typename TAwaitable>
 typename TAwaitable::type await(TAwaitable &&awaitable) {

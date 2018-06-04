@@ -1,5 +1,6 @@
 #include <QCoreApplication>
 #include <QDebug>
+#include <QThread>
 
 #include "qtcoroutine.h"
 #include "qtawaitables.h"
@@ -57,18 +58,16 @@ int main(int argc, char *argv[])
 	qDebug() << "back in main";
 	resume(id);
 	qDebug() << "back in main";
-	destroy(id); //TODO implement auto-destroy?
 
 	// test await signals
 	testObj = new QObject(qApp);
-	id = createAndRun(coroutine_2).first;
+	createAndRun(coroutine_2);
 	qDebug() << "changing name to test1";
 	testObj->setObjectName("test1");
 	qDebug() << "changing name to test2";
 	testObj->setObjectName("test2");
 	qDebug() << "destroying object";
 	delete testObj;
-	destroy(id); //TODO implement auto-destroy?
 
 	// test await timeout
 	createAndRun(coroutine_3);
