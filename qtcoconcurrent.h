@@ -31,7 +31,7 @@ private:
 };
 
 template <typename T>
-T await(const QFuture<T> &fut) {
+inline T await(const QFuture<T> &fut) {
 	return await(future<T>{fut});
 }
 

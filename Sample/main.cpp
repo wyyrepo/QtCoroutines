@@ -1,6 +1,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QThread>
+#include <QBuffer>
 
 #include "qtcoroutine.h"
 #include "qtcoawaitables.h"
@@ -13,8 +14,12 @@ using namespace std::chrono_literals;
 
 namespace {
 
+RoutineId coroutine_subroutine_tocancel_id;
+
 QObject *testObj;
 Queue<int> testQueue;
+
+QBuffer testDevice;
 
 }
 
@@ -32,7 +37,6 @@ void coroutine_subroutine_abort()
 	qDebug() << "end";
 }
 
-static RoutineId coroutine_subroutine_tocancel_id;
 void coroutine_subroutine_canceler()
 {
 	qDebug() << "begin";
@@ -92,6 +96,18 @@ void coroutine_signals()
 	qDebug() << "object was destroyed:" << std::get<0>(obj);
 
 	awaitargs<>::await(qApp, &QCoreApplication::aboutToQuit);
+	qDebug() << "end";
+}
+
+void coroutine_devices()
+{
+	qDebug() << "begin";
+	auto data = await(&testDevice, 3);
+	qDebug() << "read 3 bytes:" << data;
+	data = awaitLine(&testDevice);
+	qDebug() << "read line:" << data;
+	data = awaitAll(&testDevice);
+	qDebug() << "read rest:" << data;
 	qDebug() << "end";
 }
 
@@ -176,6 +192,20 @@ int main(int argc, char *argv[])
 	testObj->setObjectName("test2");
 	qDebug() << "back, destroying object";
 	delete testObj;
+	qDebug() << "back";
+
+	// test device
+	testDevice.open(QIODevice::ReadOnly);
+	id = createAndRun(coroutine_devices).first;
+	qDebug() << "back";
+	testDevice.buffer().append("hello you! ");
+	emit testDevice.readyRead();
+	qDebug() << "back";
+	testDevice.buffer().append("Tell me more:\nAnd we have more data ");
+	emit testDevice.readyRead();
+	qDebug() << "back";
+	testDevice.buffer().append("to be read.");
+	emit testDevice.readyRead();
 	qDebug() << "back";
 
 	// test queue
