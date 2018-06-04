@@ -13,6 +13,21 @@ QtCoroutine::RoutineId QtCoroutine::create(std::function<void ()> fn)
 	return id;
 }
 
+
+bool QtCoroutine::isPaused(QtCoroutine::RoutineId id)
+{
+	return id != current() && Ordinator::ordinator.routines.contains(id);
+}
+
+QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
+{
+	if(!Ordinator::ordinator.routines.contains(id))
+		return Finished;
+	if(!Ordinator::ordinator.resume(id))
+		return Error;
+	return Ordinator::ordinator.routines.contains(id) ? Paused : Finished;
+}
+
 void QtCoroutine::cancel(QtCoroutine::RoutineId id)
 {
 	Q_ASSERT(id != current());
@@ -38,14 +53,12 @@ QtCoroutine::RoutineId QtCoroutine::current()
 				Ordinator::ordinator.executionStack.top().first;
 }
 
-
-
-thread_local QtCoroutine::Ordinator QtCoroutine::Ordinator::ordinator;
-QAtomicInteger<quint64> QtCoroutine::Ordinator::index = 0;
-
-QtCoroutine::Routine::Routine(std::function<void()> &&func) :
-	func{std::move(func)}
-{}
+void QtCoroutine::yield()
+{
+	if(Ordinator::ordinator.executionStack.isEmpty())
+		return; // not in a coroutine
+	Ordinator::ordinator.yield();
+}
 
 void QtCoroutine::abort()
 {
@@ -55,21 +68,14 @@ void QtCoroutine::abort()
 
 
 
-QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
-{
-	if(!Ordinator::ordinator.routines.contains(id))
-		return Finished;
-	if(!Ordinator::ordinator.resume(id))
-		return Error;
-	return Ordinator::ordinator.routines.contains(id) ? Paused : Finished;
-}
+QtCoroutine::Routine::Routine(std::function<void()> &&func) :
+	func{std::move(func)}
+{}
 
-void QtCoroutine::yield()
-{
-	if(Ordinator::ordinator.executionStack.isEmpty())
-		return; // not in a coroutine
-	Ordinator::ordinator.yield();
-}
+
+
+thread_local QtCoroutine::Ordinator QtCoroutine::Ordinator::ordinator;
+QAtomicInteger<quint64> QtCoroutine::Ordinator::index = 0;
 
 QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
 {
@@ -86,4 +92,3 @@ void QtCoroutine::Ordinator::entryImpl()
 	fn();
 	routines.remove(id);
 }
-

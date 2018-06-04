@@ -25,6 +25,8 @@ private:
 	void fetch();
 };
 
+
+
 template<typename T>
 void Queue<T>::enqueue(const T &data)
 {

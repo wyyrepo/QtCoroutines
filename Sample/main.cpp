@@ -5,6 +5,7 @@
 #include "qtcoroutine.h"
 #include "qtcoawaitables.h"
 #include "qtcoqueue.h"
+#include "qtcoiterator.h"
 
 using namespace QtCoroutine;
 using namespace std::chrono_literals;
@@ -114,6 +115,26 @@ void coroutine_queue_consumer()
 	qDebug() << "end";
 }
 
+void coroutine_iterator_producer()
+{
+	qDebug() << "begin";
+	for(auto i = 0; i < 10; i++) {
+		qDebug() << "produced:" << i;
+		yield_return<int>(i);
+	}
+	qDebug() << "end";
+}
+
+void coroutine_iterator_consumer()
+{
+	qDebug() << "begin";
+	Iterator<int> iterator{coroutine_iterator_producer};
+	while(iterator.hasNext()) {
+		auto next = iterator.next();
+		qDebug() << "consumed:" << next;
+	}
+	qDebug() << "end";
+}
 
 void coroutine_wait_and_quit()
 {
@@ -157,6 +178,10 @@ int main(int argc, char *argv[])
 	testQueue.enqueue(42);
 	qDebug() << "back";
 	cancel(id);
+
+	// test iterator
+	createAndRun(coroutine_iterator_consumer);
+	qDebug() << "back";
 
 	// test await timeout
 	createAndRun(coroutine_wait_and_quit);

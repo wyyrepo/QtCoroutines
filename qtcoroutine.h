@@ -24,8 +24,9 @@ enum ResumeResult {
 extern QAtomicInteger<size_t> StackSize;
 
 RoutineId create(std::function<void()> fn);
-void cancel(RoutineId id);
+bool isPaused(RoutineId id);
 ResumeResult resume(RoutineId id);
+void cancel(RoutineId id);
 std::pair<RoutineId, ResumeResult> createAndRun(std::function<void()> fn);
 
 RoutineId current();
