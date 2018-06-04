@@ -3,7 +3,6 @@ PUBLIC_HEADERS += \
 	$$PWD/qtawaitables.h
 
 HEADERS += $$PUBLIC_HEADERS \
-	$$PWD/coroutine/coroutine.h \
 	$$PWD/qtcoroutine_p.h
 
 SOURCES += \

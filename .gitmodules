@@ -1,3 +1,0 @@
-[submodule "coroutine"]
-	path = coroutine
-	url = https://github.com/tonbit/coroutine.git
