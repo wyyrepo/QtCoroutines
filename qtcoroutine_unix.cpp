@@ -7,43 +7,36 @@ QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
 		return Finished;
 
 	{
+		// get the current context
 		auto currentCtx = Ordinator::ordinator.executionStack.isEmpty() ?
 							  &Ordinator::ordinator.ctx :
 							  Ordinator::ordinator.executionStack.top().second.ctx.data();
-		ucontext_t *targetCtx = nullptr;
 
-		// get the current context (scoped)
+		// get the target context (scoped)
+		ucontext_t *targetCtx = nullptr;
 		{
 			auto &routine = Ordinator::ordinator.routines[id];
 			if(routine.stack.isNull()) {
 				if(getcontext(routine.ctx.data()) != 0) {
-					qWarning() << "Failed to get context with errno:" << errno;
+					qWarning() << "Failed to get context with errno:" << qt_error_string(errno);
 					return Error;
 				}
 
-				//Before invoking makecontext(), the caller must allocate a new stack
-				//for this context and assign its address to ucp->uc_stack,
-				//and define a successor context and assign its address to ucp->uc_link.
 				routine.stack.reset(new char[StackSize], [](char*x){delete[]x;});
 				routine.ctx->uc_stack.ss_sp = routine.stack.data();
 				routine.ctx->uc_stack.ss_size = StackSize;
 				routine.ctx->uc_link = &Ordinator::ordinator.ctx; //"emergency switch back"
 
-				//When this context is later activated by swapcontext(), the function entry is called.
-				//When this function returns, the  successor context is activated.
-				//If the successor context pointer is NULL, the thread exits.
 				makecontext(routine.ctx.data(), &Ordinator::entry, 0);
 			}
 			targetCtx = routine.ctx.data();
 			Ordinator::ordinator.executionStack.push({id, routine});
 		}
 
-		//The swapcontext() function saves the current context,
-		//and then activates the context of another.
 		auto res = swapcontext(currentCtx, targetCtx);
 		Ordinator::ordinator.executionStack.pop();
 		if(res != 0) {
-			qWarning() << "Failed to swap into new context with errno:" << errno;
+			qWarning() << "Failed to swap into new context with errno:" << qt_error_string(errno);
 			return Error;
 		}
 	}
@@ -59,7 +52,7 @@ void QtCoroutine::yield()
 	auto currentCtx = Ordinator::ordinator.executionStack.top().second.ctx.data();
 	auto prevCtx = Ordinator::ordinator.previous();
 	if(swapcontext(currentCtx, prevCtx) != 0)
-		qWarning() << "Failed to swap back to previous context with errno:" << errno;
+		qWarning() << "Failed to swap back to previous context with errno:" << qt_error_string(errno);
 }
 
 QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
