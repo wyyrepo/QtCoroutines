@@ -1,66 +1,46 @@
 #include "qtcoroutine_p.h"
 #include <QDebug>
 
-QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
+bool QtCoroutine::Ordinator::resume(QtCoroutine::RoutineId id)
 {
-	if(!Ordinator::ordinator.routines.contains(id))
-		return Finished;
-
-	{
-		// convert main thread to fiber
-		if(!Ordinator::ordinator.fiber) {
-			Ordinator::ordinator.fiber = ConvertThreadToFiber(nullptr);
-			if(!Ordinator::ordinator.fiber) {
-				qWarning() << "Failed to create fiber with errno:" << qt_error_string(GetLastError());
-				return Error;
-			}
+	// convert main thread to fiber
+	if(!context) {
+		context = ConvertThreadToFiber(nullptr);
+		if(!context) {
+			qWarning() << "Failed to create fiber with errno:" << qt_error_string(GetLastError());
+			return false;
 		}
-
-		// get the target fiber (scoped)
-		LPVOID targetFiber = nullptr;
-		{
-			auto &routine = Ordinator::ordinator.routines[id];
-			if(routine.fiber.isNull()) {
-				routine.fiber.reset(CreateFiber(StackSize, &Ordinator::entry, nullptr),
-									DeleteFiber);
-				if(routine.fiber.isNull()) {
-					qWarning() << "Failed to create fiber with errno:" << qt_error_string(GetLastError());
-					return Error;
-				}
-			}
-			targetFiber = routine.fiber.data();
-			Ordinator::ordinator.executionStack.push({id, routine});
-		}
-
-		// perform the switch
-		SwitchToFiber(targetFiber);
-		Ordinator::ordinator.executionStack.pop();
 	}
 
-	return Ordinator::ordinator.routines.contains(id) ? Paused : Finished;
+	// get the target fiber (scoped)
+	LPVOID targetFiber = nullptr;
+	{
+		auto &routine = routines[id];
+		if(routine.context.isNull()) {
+			routine.context.reset(CreateFiber(StackSize, &Ordinator::entry, nullptr),
+								  DeleteFiber);
+			if(routine.context.isNull()) {
+				qWarning() << "Failed to create fiber with errno:" << qt_error_string(GetLastError());
+				return false;
+			}
+		}
+		targetFiber = routine.context.data();
+		executionStack.push({id, routine});
+	}
+
+	// perform the switch
+	SwitchToFiber(targetFiber);
+	executionStack.pop();
+	return true;
 }
 
-void QtCoroutine::yield()
+void QtCoroutine::Ordinator::yield()
 {
-	if(Ordinator::ordinator.executionStack.isEmpty())
-		return; // not in a coroutine
-	SwitchToFiber(Ordinator::ordinator.previous());
-}
-
-QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
-{
-	if(executionStack.size() <= 1)
-		return &fiber;
-	else
-		return executionStack[executionStack.size() - 2].second.fiber.data();
+	SwitchToFiber(previous());
 }
 
 void QtCoroutine::Ordinator::entry()
 {
-	{
-		auto routineInfo = ordinator.executionStack.top();
-		routineInfo.second.func();
-		ordinator.routines.remove(routineInfo.first);
-	}
-	SwitchToFiber(Ordinator::ordinator.previous());
+	ordinator.entryImpl();
+	SwitchToFiber(ordinator.previous());
 }

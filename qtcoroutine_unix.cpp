@@ -1,74 +1,60 @@
 #include "qtcoroutine_p.h"
 #include <QDebug>
 
-QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
+bool QtCoroutine::Ordinator::resume(QtCoroutine::RoutineId id)
 {
-	if(!Ordinator::ordinator.routines.contains(id))
-		return Finished;
+	// get the current context
+	auto currentCtx = executionStack.isEmpty() ?
+						  &context :
+						  executionStack.top().second.context.data();
 
+	// get the target context (scoped)
+	ucontext_t *targetCtx = nullptr;
 	{
-		// get the current context
-		auto currentCtx = Ordinator::ordinator.executionStack.isEmpty() ?
-							  &Ordinator::ordinator.ctx :
-							  Ordinator::ordinator.executionStack.top().second.ctx.data();
-
-		// get the target context (scoped)
-		ucontext_t *targetCtx = nullptr;
-		{
-			auto &routine = Ordinator::ordinator.routines[id];
-			if(routine.stack.isNull()) {
-				if(getcontext(routine.ctx.data()) != 0) {
-					qWarning() << "Failed to get context with errno:" << qt_error_string(errno);
-					return Error;
-				}
-
-				routine.stack.reset(new char[StackSize], [](char*x){delete[]x;});
-				routine.ctx->uc_stack.ss_sp = routine.stack.data();
-				routine.ctx->uc_stack.ss_size = StackSize;
-				routine.ctx->uc_link = &Ordinator::ordinator.ctx; //"emergency switch back"
-
-				makecontext(routine.ctx.data(), &Ordinator::entry, 0);
+		auto &routine = routines[id];
+		if(routine.stack.isNull()) {
+			if(getcontext(routine.context.data()) != 0) {
+				qWarning() << "Failed to get context with errno:" << qt_error_string(errno);
+				return false;
 			}
-			targetCtx = routine.ctx.data();
-			Ordinator::ordinator.executionStack.push({id, routine});
-		}
 
-		auto res = swapcontext(currentCtx, targetCtx);
-		Ordinator::ordinator.executionStack.pop();
-		if(res != 0) {
-			qWarning() << "Failed to swap into new context with errno:" << qt_error_string(errno);
-			return Error;
+#ifdef QTCO_DIAGNOSTICS
+			static int cnt = 0;
+			++cnt;
+			routine.stack.reset(new char[StackSize], [&, id](char*x){delete[]x;qDebug() << "[CTXCNT]" << id << "cleared, remaining:" << --cnt;});
+#else
+			routine.stack.reset(new char[StackSize], [](char*x){delete[]x;});
+#endif
+			routine.context->uc_stack.ss_sp = routine.stack.data();
+			routine.context->uc_stack.ss_size = StackSize;
+			routine.context->uc_link = &context; //"emergency switch back"
+
+			makecontext(routine.context.data(), &Ordinator::entry, 0);
 		}
+		targetCtx = routine.context.data();
+		executionStack.push({id, routine});
 	}
 
-	return Ordinator::ordinator.routines.contains(id) ? Paused : Finished;
+	auto res = swapcontext(currentCtx, targetCtx);
+	executionStack.pop();
+	if(res != 0) {
+		qWarning() << "Failed to swap into new context with errno:" << qt_error_string(errno);
+		return false;
+	}
+
+	return true;
 }
 
-void QtCoroutine::yield()
+void QtCoroutine::Ordinator::yield()
 {
-	if(Ordinator::ordinator.executionStack.isEmpty())
-		return; // not in a coroutine
-
-	auto currentCtx = Ordinator::ordinator.executionStack.top().second.ctx.data();
-	auto prevCtx = Ordinator::ordinator.previous();
+	auto currentCtx = executionStack.top().second.context.data();
+	auto prevCtx = previous();
 	if(swapcontext(currentCtx, prevCtx) != 0)
 		qWarning() << "Failed to swap back to previous context with errno:" << qt_error_string(errno);
 }
 
-QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
-{
-	if(executionStack.size() <= 1)
-		return &ctx;
-	else
-		return executionStack[executionStack.size() - 2].second.ctx.data();
-}
-
 void QtCoroutine::Ordinator::entry()
 {
-	{
-		auto routineInfo = ordinator.executionStack.top();
-		routineInfo.second.func();
-		ordinator.routines.remove(routineInfo.first);
-	}
+	ordinator.entryImpl();
 	setcontext(ordinator.previous());
 }

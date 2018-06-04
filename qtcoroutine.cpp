@@ -52,3 +52,38 @@ void QtCoroutine::abort()
 	Ordinator::ordinator.routines.remove(current());
 	yield();
 }
+
+
+
+QtCoroutine::ResumeResult QtCoroutine::resume(QtCoroutine::RoutineId id)
+{
+	if(!Ordinator::ordinator.routines.contains(id))
+		return Finished;
+	if(!Ordinator::ordinator.resume(id))
+		return Error;
+	return Ordinator::ordinator.routines.contains(id) ? Paused : Finished;
+}
+
+void QtCoroutine::yield()
+{
+	if(Ordinator::ordinator.executionStack.isEmpty())
+		return; // not in a coroutine
+	Ordinator::ordinator.yield();
+}
+
+QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
+{
+	if(executionStack.size() <= 1)
+		return &context;
+	else
+		return executionStack[executionStack.size() - 2].second.context.data();
+}
+
+void QtCoroutine::Ordinator::entryImpl()
+{
+	auto id = executionStack.top().first;
+	auto fn = executionStack.top().second.func;
+	fn();
+	routines.remove(id);
+}
+

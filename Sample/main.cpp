@@ -3,7 +3,8 @@
 #include <QThread>
 
 #include "qtcoroutine.h"
-#include "qtawaitables.h"
+#include "qtcoawaitables.h"
+#include "qtcoqueue.h"
 
 using namespace QtCoroutine;
 using namespace std::chrono_literals;
@@ -11,67 +12,68 @@ using namespace std::chrono_literals;
 namespace {
 
 QObject *testObj;
+Queue<int> testQueue;
 
 }
 
-void coroutine_1_1()
+void coroutine_subroutine_basic()
 {
 	qDebug() << "begin";
 	yield();
 	qDebug() << "end";
 }
 
-void coroutine_1_2()
+void coroutine_subroutine_abort()
 {
 	qDebug() << "begin";
 	QtCoroutine::abort();
 	qDebug() << "end";
 }
 
-static RoutineId coroutine_1_3_id;
-void coroutine_1_3_1()
+static RoutineId coroutine_subroutine_tocancel_id;
+void coroutine_subroutine_canceler()
 {
 	qDebug() << "begin";
-	QtCoroutine::cancel(coroutine_1_3_id);
+	QtCoroutine::cancel(coroutine_subroutine_tocancel_id);
 	qDebug() << "end";
 }
 
-void coroutine_1_3()
+void coroutine_subroutine_tocancel()
 {
 	qDebug() << "begin";
-	coroutine_1_3_id = current();
-	createAndRun(coroutine_1_3_1);
+	coroutine_subroutine_tocancel_id = current();
+	createAndRun(coroutine_subroutine_canceler);
 	qDebug() << "end";
 }
 
-void coroutine_1()
+void coroutine_basic()
 {
 	qDebug() << "begin";
 	yield();
 	qDebug() << "back";
 
 	// normal subroutine
-	auto id = createAndRun(coroutine_1_1).first;
+	auto id = createAndRun(coroutine_subroutine_basic).first;
 	qDebug() << "back";
 	resume(id);
 	qDebug() << "back";
 
 	// aborting subroutine
-	id = createAndRun(coroutine_1_2).first;
+	id = createAndRun(coroutine_subroutine_abort).first;
 	qDebug() << "back";
 	resume(id);
-	qDebug() << "back";
+	qDebug() << "still here";
 
 	// canceled subroutine
-	id = createAndRun(coroutine_1_3).first;
+	id = createAndRun(coroutine_subroutine_tocancel).first;
 	qDebug() << "back";
 	resume(id);
-	qDebug() << "back";
+	qDebug() << "still her";
 
 	qDebug() << "end";
 }
 
-void coroutine_2()
+void coroutine_signals()
 {
 	qDebug() << "begin";
 
@@ -91,7 +93,29 @@ void coroutine_2()
 	qDebug() << "end";
 }
 
-void coroutine_3()
+void coroutine_queue_producer()
+{
+	qDebug() << "begin";
+	for(auto i = 7; i < 42; i += 7) {
+		qDebug() << "produced:" << i;
+		testQueue.enqueue(i);
+	}
+	qDebug() << "end";
+}
+
+void coroutine_queue_consumer()
+{
+	qDebug() << "begin";
+	int val;
+	forever {
+		val = testQueue.dequeue();
+		qDebug() << "consumed:" << val;
+	}
+	qDebug() << "end";
+}
+
+
+void coroutine_wait_and_quit()
 {
 	qDebug() << "begin";
 	await(3s);
@@ -105,22 +129,36 @@ int main(int argc, char *argv[])
 	qSetMessagePattern("%{function}:%{line} -> %{message}");
 
 	// test simple yield
-	auto id = createAndRun(coroutine_1).first;
+	auto id = createAndRun(coroutine_basic).first;
 	qDebug() << "back";
 	resume(id);
 	qDebug() << "back";
 
 	// test await signals
 	testObj = new QObject(qApp);
-	createAndRun(coroutine_2);
-	qDebug() << "changing name to test1";
+	createAndRun(coroutine_signals);
+	qDebug() << "back, changing name to test1";
 	testObj->setObjectName("test1");
-	qDebug() << "changing name to test2";
+	qDebug() << "back, changing name to test2";
 	testObj->setObjectName("test2");
-	qDebug() << "destroying object";
+	qDebug() << "back, destroying object";
 	delete testObj;
+	qDebug() << "back";
+
+	// test queue
+	testQueue.enqueue(3);
+	testQueue.enqueue(13);
+	id = createAndRun(coroutine_queue_consumer).first;
+	qDebug() << "back";
+	testQueue.enqueue(666);
+	qDebug() << "back";
+	createAndRun(coroutine_queue_producer);
+	qDebug() << "back";
+	testQueue.enqueue(42);
+	qDebug() << "back";
+	cancel(id);
 
 	// test await timeout
-	createAndRun(coroutine_3);
+	createAndRun(coroutine_wait_and_quit);
 	return a.exec();
 }
