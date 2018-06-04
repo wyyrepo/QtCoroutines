@@ -85,7 +85,7 @@ template<typename T>
 T Iterator<T>::next()
 {
 	if(!getNext())
-		;//TODO throw
+		throw std::runtime_error("Called next on iterator with no data available. User hasNext to check for data.");
 	_hasCurrent = false;
 	return _current;
 }
