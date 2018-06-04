@@ -35,9 +35,22 @@ void abort();
 
 template <typename TAwaitable>
 typename TAwaitable::type await(TAwaitable &&awaitable) {
-	awaitable.prepare();
+	awaitable.prepare(std::bind(&QtCoroutine::resume, current()));
 	yield();
 	return awaitable.result();
+};
+
+// theoretical template interface for await
+// You don't have to implement this interface - it is only ment as documentation.
+// Any class you implement that provides members with the same signatures (generic or non generic doesn't matter) can be passed to await
+// You can still use this interface though if you want to enforce someone to implement an awaitable
+template <typename T>
+class Awaitable
+{
+public:
+	using type = T;
+	virtual void prepare(std::function<void()>) = 0;
+	virtual type result() = 0;
 };
 
 };

@@ -16,7 +16,7 @@ struct timeout {
 	{}
 
 	using type = void;
-	void prepare();
+	void prepare(std::function<void()> resume);
 	type result();
 
 private:
@@ -41,13 +41,12 @@ struct signal {
 	{}
 
 	using type = std::tuple<std::decay_t<Args>...>;
-	void prepare() {
-		const auto routine = current();
+	void prepare(std::function<void()> resume) {
 		_connection = QObject::connect(_sender, _signal,
-									   [this, routine](std::decay_t<Args>... args) {
+									   [this, resume{std::move(resume)}](std::decay_t<Args>... args) {
 			_result = std::make_tuple(args...);
 			QObject::disconnect(_connection);
-			resume(routine);
+			resume();
 		});
 	}
 	type &&result() {
@@ -124,7 +123,7 @@ struct iodevice {
 	iodevice(QIODevice *device, qint64 readCnt = ReadAll);
 
 	using type = QByteArray;
-	void prepare();
+	void prepare(std::function<void()> resume);
 	type &&result();
 
 private:

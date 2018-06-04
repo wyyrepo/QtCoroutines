@@ -6,10 +6,9 @@ QtCoroutine::timeout::timeout(std::chrono::milliseconds tout) :
 	_timeout{std::move(tout)}
 {}
 
-void QtCoroutine::timeout::prepare()
+void QtCoroutine::timeout::prepare(std::function<void()> resume)
 {
-	const auto routine = current();
-	QTimer::singleShot(_timeout, std::bind(&QtCoroutine::resume, routine));
+	QTimer::singleShot(_timeout, std::move(resume));
 }
 
 QtCoroutine::timeout::type QtCoroutine::timeout::result() {}
@@ -25,11 +24,10 @@ QtCoroutine::iodevice::iodevice(QIODevice *device, qint64 readCnt) :
 		qWarning() << "Unbuffered devices may not properly work and never return!";
 }
 
-void QtCoroutine::iodevice::prepare()
+void QtCoroutine::iodevice::prepare(std::function<void()> resume)
 {
-	const auto routine = current();
 	_connection = QObject::connect(_device, &QIODevice::readyRead,
-								   [this, routine]() {
+								   [this, resume{std::move(resume)}]() {
 		switch(_readCnt) {
 		case ReadAll:
 			_result = _device->readAll();
@@ -46,7 +44,7 @@ void QtCoroutine::iodevice::prepare()
 			break;
 		}
 		QObject::disconnect(_connection);
-		resume(routine);
+		resume();
 	});
 }
 

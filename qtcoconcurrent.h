@@ -15,11 +15,10 @@ struct future {
 	}
 
 	using type = T;
-	void prepare() {
-		const auto routine = current();
+	void prepare(std::function<void()> resume) {
 		QObject::connect(&_watcher, &QFutureWatcherBase::finished,
-						 [routine]() {
-			resume(routine);
+						 [resume{std::move(resume)}]() {
+			resume();
 		});
 	}
 	type result() {
