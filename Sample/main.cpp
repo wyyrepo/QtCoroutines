@@ -14,16 +14,66 @@ QObject *testObj;
 
 }
 
+void coroutine_1_1()
+{
+	qDebug() << "begin";
+	yield();
+	qDebug() << "end";
+}
+
+void coroutine_1_2()
+{
+	qDebug() << "begin";
+	QtCoroutine::abort();
+	qDebug() << "end";
+}
+
+static RoutineId coroutine_1_3_id;
+void coroutine_1_3_1()
+{
+	qDebug() << "begin";
+	QtCoroutine::cancel(coroutine_1_3_id);
+	qDebug() << "end";
+}
+
+void coroutine_1_3()
+{
+	qDebug() << "begin";
+	coroutine_1_3_id = current();
+	createAndRun(coroutine_1_3_1);
+	qDebug() << "end";
+}
+
 void coroutine_1()
 {
-	qDebug() << "begin" << Q_FUNC_INFO;
+	qDebug() << "begin";
 	yield();
-	qDebug() << "end" << Q_FUNC_INFO;
+	qDebug() << "back";
+
+	// normal subroutine
+	auto id = createAndRun(coroutine_1_1).first;
+	qDebug() << "back";
+	resume(id);
+	qDebug() << "back";
+
+	// aborting subroutine
+	id = createAndRun(coroutine_1_2).first;
+	qDebug() << "back";
+	resume(id);
+	qDebug() << "back";
+
+	// canceled subroutine
+	id = createAndRun(coroutine_1_3).first;
+	qDebug() << "back";
+	resume(id);
+	qDebug() << "back";
+
+	qDebug() << "end";
 }
 
 void coroutine_2()
 {
-	qDebug() << "begin" << Q_FUNC_INFO;
+	qDebug() << "begin";
 
 	auto tpl = awaitargs<QString>::tawait(testObj, &QObject::objectNameChanged);
 	static_assert(std::is_same<decltype(tpl), std::tuple<QString>>::value, "tpl wrong");
@@ -38,26 +88,27 @@ void coroutine_2()
 	qDebug() << "object was destroyed:" << std::get<0>(obj);
 
 	awaitargs<>::await(qApp, &QCoreApplication::aboutToQuit);
-	qDebug() << "end" << Q_FUNC_INFO;
+	qDebug() << "end";
 }
 
 void coroutine_3()
 {
-	qDebug() << "begin" << Q_FUNC_INFO;
+	qDebug() << "begin";
 	await(3s);
 	QMetaObject::invokeMethod(qApp, "quit", Qt::QueuedConnection);
-	qDebug() << "end" << Q_FUNC_INFO;
+	qDebug() << "end";
 }
 
 int main(int argc, char *argv[])
 {
 	QCoreApplication a(argc, argv);
+	qSetMessagePattern("%{function}:%{line} -> %{message}");
 
 	// test simple yield
 	auto id = createAndRun(coroutine_1).first;
-	qDebug() << "back in main";
+	qDebug() << "back";
 	resume(id);
-	qDebug() << "back in main";
+	qDebug() << "back";
 
 	// test await signals
 	testObj = new QObject(qApp);
