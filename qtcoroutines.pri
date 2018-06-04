@@ -5,12 +5,13 @@ PUBLIC_HEADERS += \
 	$$PWD/qtcoiterator.h
 
 HEADERS += $$PUBLIC_HEADERS \
-	$$PWD/qtcoroutine_p.h
+	$$PWD/qtcoroutine_p.h \
+	$$PWD/qtcoconcurrent.h
 
 SOURCES += \
 	$$PWD/qtcoroutine.cpp \
 	$$PWD/qtcoawaitables.cpp \
-    $$PWD/qtcoiterator.cpp
+	$$PWD/qtcoiterator.cpp
 
 win32: SOURCES += $$PWD/qtcoroutine_win.cpp
 else: SOURCES += $$PWD/qtcoroutine_unix.cpp

@@ -1,3 +1,4 @@
+QT += concurrent
 QT -= gui
 
 CONFIG += c++14 console
