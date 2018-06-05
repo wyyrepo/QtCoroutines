@@ -49,7 +49,7 @@ struct signal {
 			resume();
 		});
 	}
-	type &&result() {
+	type result() {
 		return std::move(_result);
 	}
 
@@ -124,7 +124,7 @@ struct iodevice {
 
 	using type = QByteArray;
 	void prepare(std::function<void()> resume);
-	type &&result();
+	type result();
 
 private:
 	QIODevice * const _device;

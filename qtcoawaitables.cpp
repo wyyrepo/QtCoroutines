@@ -48,7 +48,7 @@ void QtCoroutine::iodevice::prepare(std::function<void()> resume)
 	});
 }
 
-QtCoroutine::iodevice::type &&QtCoroutine::iodevice::result()
+QtCoroutine::iodevice::type QtCoroutine::iodevice::result()
 {
 	return std::move(_result);
 }

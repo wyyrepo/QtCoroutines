@@ -62,6 +62,7 @@ void QtCoroutine::yield()
 
 void QtCoroutine::abort()
 {
+	Q_ASSERT_X(current() != InvalidRoutineId, Q_FUNC_INFO, "QtCoroutine::abort can only be called from within a coroutine");
 	Ordinator::ordinator.routines.remove(current());
 	yield();
 }
