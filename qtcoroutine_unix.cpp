@@ -5,7 +5,7 @@ bool QtCoroutine::Ordinator::resume(QtCoroutine::RoutineId id)
 {
 	// get the current context
 	auto currentCtx = executionStack.isEmpty() ?
-						  &context :
+						  context :
 						  executionStack.top().second.context.data();
 
 	// get the target context (scoped)
@@ -27,7 +27,7 @@ bool QtCoroutine::Ordinator::resume(QtCoroutine::RoutineId id)
 #endif
 			routine.context->uc_stack.ss_sp = routine.stack.data();
 			routine.context->uc_stack.ss_size = StackSize;
-			routine.context->uc_link = &context; //"emergency switch back"
+			routine.context->uc_link = context; //"emergency switch back"
 
 			makecontext(routine.context.data(), &Ordinator::entry, 0);
 		}

@@ -17,7 +17,7 @@ bool QtCoroutine::Ordinator::resume(QtCoroutine::RoutineId id)
 	{
 		auto &routine = routines[id];
 		if(routine.context.isNull()) {
-			routine.context.reset(CreateFiber(StackSize, &Ordinator::entry, nullptr),
+			routine.context.reset(reinterpret_cast<Routine::Fiber*>(CreateFiber(StackSize, &Ordinator::entry, nullptr)),
 								  DeleteFiber);
 			if(routine.context.isNull()) {
 				qWarning() << "Failed to create fiber with errno:" << qt_error_string(GetLastError());
@@ -39,7 +39,7 @@ void QtCoroutine::Ordinator::yield()
 	SwitchToFiber(previous());
 }
 
-void QtCoroutine::Ordinator::entry()
+void WINAPI QtCoroutine::Ordinator::entry(LPVOID)
 {
 	ordinator.entryImpl();
 	SwitchToFiber(ordinator.previous());

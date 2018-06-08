@@ -81,7 +81,7 @@ QAtomicInteger<quint64> QtCoroutine::Ordinator::index = 0;
 QtCoroutine::Ordinator::ContextType QtCoroutine::Ordinator::previous()
 {
 	if(executionStack.size() <= 1)
-		return &context;
+		return context;
 	else
 		return executionStack[executionStack.size() - 2].second.context.data();
 }

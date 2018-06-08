@@ -3,11 +3,11 @@
 
 #include "qtcoroutine.h"
 #include <QStack>
+#include <QSharedPointer>
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #else
 #include <ucontext.h>
-#include <QSharedPointer>
 #endif
 
 namespace QtCoroutine {
@@ -15,9 +15,9 @@ namespace QtCoroutine {
 struct Routine
 {
 	std::function<void()> func;
-	//TODO remove deleters from here, they are set when the vars are set
 #ifdef Q_OS_WIN
-	QSharedPointer<VOID> context;
+	struct Fiber {};
+	QSharedPointer<Fiber> context;
 #else
 	QSharedPointer<char> stack;
 	QSharedPointer<ucontext_t> context{new ucontext_t{}};
@@ -34,7 +34,8 @@ struct Ordinator
 	LPVOID context;
 	using ContextType = LPVOID;
 #else
-	ucontext_t context;
+	ucontext_t mContext;
+	ucontext_t* const context = &mContext;
 	using ContextType = ucontext_t*;
 #endif
 
@@ -46,7 +47,11 @@ struct Ordinator
 	thread_local static Ordinator ordinator;
 	static QAtomicInteger<RoutineId> index;
 
+#ifdef Q_OS_WIN
+	static void WINAPI entry(LPVOID);
+#else
 	static void entry();
+#endif
 };
 
 }
