@@ -6,7 +6,7 @@
     "dependencies": [
     ],
     "description": "Helper classes for coroutines in Qt",
-    "license": "LICENSE",
+    "license": "BSD_3_CLAUSE",
     "name": "de.skycoder42.qtcoroutines",
     "pri_filename": "qtcoroutines.pri",
     "repository": {

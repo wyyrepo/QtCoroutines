@@ -2,8 +2,8 @@
     "dependencies": [
     ],
     "license": {
-        "file": "BSD_3_CLAUSE",
-        "name": "LICENSE"
+        "file": "LICENSE",
+        "name": "BSD_3_CLAUSE"
     },
     "prcFile": "",
     "priFile": "qtcoroutines.pri",
