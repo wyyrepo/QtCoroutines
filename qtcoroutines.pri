@@ -1,3 +1,5 @@
+CONFIG += c++14
+
 PUBLIC_HEADERS += \
 	$$PWD/qtcoroutine.h \
 	$$PWD/qtcoawaitables.h \

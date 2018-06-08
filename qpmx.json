@@ -1,0 +1,29 @@
+{
+    "dependencies": [
+    ],
+    "license": {
+        "file": "BSD_3_CLAUSE",
+        "name": "LICENSE"
+    },
+    "prcFile": "",
+    "priFile": "qtcoroutines.pri",
+    "priIncludes": [
+    ],
+    "publishers": {
+        "qpm": {
+            "author": {
+                "email": "skycoder42.de@gmx.de",
+                "name": "Skycoder"
+            },
+            "description": "Helper classes for coroutines in Qt",
+            "name": "de.skycoder42.qtcoroutines",
+            "repository": {
+                "type": "GIT",
+                "url": "https://github.com/Skycoder42/QtCoroutines.git"
+            },
+            "webpage": "https://github.com/Skycoder42/QtCoroutines"
+        }
+    },
+    "qbsFile": "",
+    "source": false
+}
