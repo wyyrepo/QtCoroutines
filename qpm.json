@@ -1,0 +1,22 @@
+{
+    "author": {
+        "email": "skycoder42.de@gmx.de",
+        "name": "Skycoder"
+    },
+    "dependencies": [
+    ],
+    "description": "Helper classes for coroutines in Qt",
+    "license": "LICENSE",
+    "name": "de.skycoder42.qtcoroutines",
+    "pri_filename": "qtcoroutines.pri",
+    "repository": {
+        "type": "GIT",
+        "url": "https://github.com/Skycoder42/QtCoroutines.git"
+    },
+    "version": {
+        "fingerprint": "",
+        "label": "1.0.0",
+        "revision": ""
+    },
+    "webpage": "https://github.com/Skycoder42/QtCoroutines"
+}
