@@ -4,11 +4,11 @@ PUBLIC_HEADERS += \
 	$$PWD/qtcoroutine.h \
 	$$PWD/qtcoawaitables.h \
 	$$PWD/qtcoqueue.h \
-	$$PWD/qtcoiterator.h
+	$$PWD/qtcoiterator.h \
+	$$PWD/qtcoconcurrent.h
 
 HEADERS += $$PUBLIC_HEADERS \
-	$$PWD/qtcoroutine_p.h \
-	$$PWD/qtcoconcurrent.h
+	$$PWD/qtcoroutine_p.h
 
 SOURCES += \
 	$$PWD/qtcoroutine.cpp \
